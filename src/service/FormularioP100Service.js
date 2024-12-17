@@ -38,8 +38,5 @@ export default {
         url = url.endsWith('&') ? url.slice(0, -1) : url;
         return HttpClientApi().get(url);
     },
-     data_combo: () => {
-        return HttpClientApi().get('p100/');
-    },
     
 };

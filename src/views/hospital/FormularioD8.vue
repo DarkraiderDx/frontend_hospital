@@ -142,6 +142,25 @@ export default {
 
 
         });
+        const datos_unicos_multi = (campos) => {
+            if (!Array.isArray(datos_api.value)) {
+                console.error("datos_api.value no es un arreglo válido");
+                return {};
+            }
+
+            const resultado = campos.reduce((acc, campo) => {
+                acc[campo] = {}; 
+                datos_api.value.forEach((p) => {
+                    if (p[campo] !== null && p[campo] !== undefined && p[campo] !== '') {
+                        acc[campo][p[campo]] = (acc[campo][p[campo]] || 0) + 1;
+                    }
+                });
+                return acc;
+            }, {});
+
+            return resultado;
+        };
+
         const fetchData = async () => {
             loading.value = true;
             try {
@@ -156,6 +175,20 @@ export default {
                 );
                 datos_api.value = response.data?.datos_filtrados || [];
                 datos_para_grafica.value = response.data?.datos_unicos_id || [];
+                datos_estaticos.value = response.data?.datos_grafica_estatica || [];
+
+                const campos_filtrar = ['año', 'mes','servicio','nombre_completo_medico','tipo_paciente'];
+                const resultado_unicos = datos_unicos_multi(campos_filtrar);
+                const año_filtrar = Object.keys(resultado_unicos['año']);
+                const mes_filtrar = Object.keys(resultado_unicos['mes']);
+                const servicio_filtrar = Object.keys(resultado_unicos['servicio']);
+                const doctor_filtrar = Object.keys(resultado_unicos['nombre_completo_medico']);
+                const pacient_filtrar = Object.keys(resultado_unicos['tipo_paciente']);
+                filterOptions.value.years = año_filtrar.map(y => ({name: y}));
+                filterOptions.value.months = mes_filtrar.map(m => ({name: m}));
+                filterOptions.value.services = servicio_filtrar.map (s => ({name: s}));
+                filterOptions.value.doctors = doctor_filtrar.map(d => ({name: d}));
+                filterOptions.value.pacient = pacient_filtrar.map(p => ({name: p}));
                 processChartData();
             } catch (error) {
                 console.error("Error al obtener datos filtrados:", error);
@@ -164,23 +197,7 @@ export default {
             }
         };
 
-        const loadData = async () => {
-            loading.value = true;
-            try {
-                const response = await FormularioD8Service.data_combo();
-                datos_estaticos.value = response.data?.datos_filtrados || [];
-                filterOptions.value.years = response.data.años_unicos.map(year => ({ name: year }));
-                filterOptions.value.months = response.data.meses_unicos.map(month => ({ name: month }));
-                filterOptions.value.services = response.data.servicios_unicos.map(service => ({ name: service }));
-                filterOptions.value.doctors = response.data.medicos_unicos.map(doctor => ({ name: doctor }));
-                filterOptions.value.pacient = response.data.pacientes_unicos.map(pacient => ({name:pacient}));
-                processChartData();
-            } catch (error) {
-                console.error("Error al cargar los datos iniciales:", error);
-            } finally {
-                loading.value = false;
-            }
-        };
+       
 
         const processChartData = () => {
             if (!datos_api.value.length) return;
@@ -334,7 +351,7 @@ export default {
             fetchData();
         });
 
-        onMounted(loadData);
+        onMounted(fetchData);
 
         return {
             loading,

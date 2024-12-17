@@ -42,11 +42,13 @@
                 <div class="graficos-sexo-solicitud">
                     <div class="grafica-sexo">
                         <h4>SEXO</h4>
-                        <Chart type="pie" :data="chartData_sexo" :options="chartOptions_sexo" style="flex:1; padding-bottom: 20px;" />
+                        <Chart type="pie" :data="chartData_sexo" :options="chartOptions_sexo"
+                            style="flex:1; padding-bottom: 20px;" />
                     </div>
                     <div class="grafico-solicitud">
                         <h4>SOLICITUDES </h4>
-                        <Chart type="pie" :data="chartData_soli" :options="chartOptions_soli" style="flex:1; padding-bottom: 20px;" />
+                        <Chart type="pie" :data="chartData_soli" :options="chartOptions_soli"
+                            style="flex:1; padding-bottom: 20px;" />
                     </div>
                 </div>
                 <div class="grafico-cantidad-solicitada">
@@ -57,7 +59,7 @@
             </div>
             <div class="tabla-datos">
                 <h4>CANTIDADES SOLICITADAS POR PRESTACIONES</h4>
-                
+
                 <DataTable :value="prestaciones" paginator :rows="10" :rowsPerPageOptions="[10, 20, 50]"
                     tableStyle="min-width: 50rem">
                     <Column field="id" header="ID"></Column>
@@ -103,7 +105,7 @@ export default {
             services: [],
             doctors: [],
             requests: [{ name: 'Realizado' }, { name: 'Eliminado' }],
-            pacient:[],
+            pacient: [],
         });
         const prestaciones = ref();
         const datos_api = ref([]);
@@ -128,18 +130,37 @@ export default {
             scales: { x: { beginAtZero: true } },
         });
         const chartOptions_sexo = ref({
-            
+
             responsive: true,
             maintainAspectRatio: false,
-            
+
         });
         const chartOptions_soli = ref({
-            
+
             responsive: true,
             maintainAspectRatio: false,
-            
-            
+
+
         });
+        const datos_unicos_multi = (campos) => {
+            if (!Array.isArray(datos_api.value)) {
+                console.error("datos_api.value no es un arreglo válido");
+                return {};
+            }
+
+            const resultado = campos.reduce((acc, campo) => {
+                acc[campo] = {}; 
+                datos_api.value.forEach((p) => {
+                    if (p[campo] !== null && p[campo] !== undefined && p[campo] !== '') {
+                        acc[campo][p[campo]] = (acc[campo][p[campo]] || 0) + 1;
+                    }
+                });
+                return acc;
+            }, {});
+
+            return resultado;
+        };
+
         const fetchData = async () => {
             loading.value = true;
             try {
@@ -154,27 +175,23 @@ export default {
                 );
                 datos_api.value = response.data?.datos_filtrados || [];
                 datos_para_grafica.value = response.data?.datos_unicos_id || [];
+                datos_estaticos.value = response.data?.datos_grafica_estatica || [];
+
+                const campos_filtrar = ['año', 'mes','servicio','nombre_completo_medico','tipo_paciente'];
+                const resultado_unicos = datos_unicos_multi(campos_filtrar);
+                const año_filtrar = Object.keys(resultado_unicos['año']);
+                const mes_filtrar = Object.keys(resultado_unicos['mes']);
+                const servicio_filtrar = Object.keys(resultado_unicos['servicio']);
+                const doctor_filtrar = Object.keys(resultado_unicos['nombre_completo_medico']);
+                const pacient_filtrar = Object.keys(resultado_unicos['tipo_paciente']);
+                filterOptions.value.years = año_filtrar.map(y => ({name: y}));
+                filterOptions.value.months = mes_filtrar.map(m => ({name: m}));
+                filterOptions.value.services = servicio_filtrar.map (s => ({name: s}));
+                filterOptions.value.doctors = doctor_filtrar.map(d => ({name: d}));
+                filterOptions.value.pacient = pacient_filtrar.map(p => ({name: p}));
                 processChartData();
             } catch (error) {
                 console.error("Error al obtener datos filtrados:", error);
-            } finally {
-                loading.value = false;
-            }
-        };
-
-        const loadData = async () => {
-            loading.value = true;
-            try {
-                const response = await FormularioP8Service.data_combo();
-                datos_estaticos.value = response.data?.datos_filtrados || [];
-                filterOptions.value.years = response.data.años_unicos.map(year => ({ name: year }));
-                filterOptions.value.months = response.data.meses_unicos.map(month => ({ name: month }));
-                filterOptions.value.services = response.data.servicios_unicos.map(service => ({ name: service }));
-                filterOptions.value.doctors = response.data.medicos_unicos.map(doctor => ({ name: doctor }));
-                filterOptions.value.pacient = response.data.pacientes_unicos.map(pacient => ({name:pacient}));
-                processChartData();
-            } catch (error) {
-                console.error("Error al cargar los datos iniciales:", error);
             } finally {
                 loading.value = false;
             }
@@ -211,44 +228,44 @@ export default {
             const colorSexoFemenino = "#f90404";
             const colorAprobado = "#14a006";
             const setChartData_sexo = () => {
-                const conteoSexo = datos_para_grafica.value.reduce((acc,p) => {
-                    if (p.sexo){
-                        acc[p.sexo] = (acc[p.sexo] || 0)+1;
+                const conteoSexo = datos_para_grafica.value.reduce((acc, p) => {
+                    if (p.sexo) {
+                        acc[p.sexo] = (acc[p.sexo] || 0) + 1;
                     }
                     return acc
-                },{});
-                
-                conteoDatosSexo.value = [conteoSexo['MASCULINO']||0,conteoSexo['FEMENINO']||0]
+                }, {});
+
+                conteoDatosSexo.value = [conteoSexo['MASCULINO'] || 0, conteoSexo['FEMENINO'] || 0]
                 return {
-                    labels: ['MASCULINO','FEMENINO'],
+                    labels: ['MASCULINO', 'FEMENINO'],
                     datasets: [
                         {
                             label: 'Total',
                             data: conteoDatosSexo,
-                            backgroundColor: [hexToRgba(colorSexoMasculino, 0.4),hexToRgba(colorSexoFemenino, 0.4)],
-                            borderColor: [colorSexoMasculino,colorSexoFemenino],
+                            backgroundColor: [hexToRgba(colorSexoMasculino, 0.4), hexToRgba(colorSexoFemenino, 0.4)],
+                            borderColor: [colorSexoMasculino, colorSexoFemenino],
                             borderWidth: 1
                         }
                     ]
                 };
             };
             const setChartData_soli = () => {
-                const conteoSolicitudes = datos_para_grafica.value.reduce((acc,p) => {
-                    if (p.solicitudes){
-                        acc[p.solicitudes] = (acc[p.solicitudes] || 0)+1;
+                const conteoSolicitudes = datos_para_grafica.value.reduce((acc, p) => {
+                    if (p.solicitudes) {
+                        acc[p.solicitudes] = (acc[p.solicitudes] || 0) + 1;
                     }
                     return acc
-                },{});
-                
-                const conteoDatos = [conteoSolicitudes['Realizado']||0,conteoSolicitudes['Eliminado']||0]
+                }, {});
+
+                const conteoDatos = [conteoSolicitudes['Realizado'] || 0, conteoSolicitudes['Eliminado'] || 0]
                 return {
-                    labels: ['REALIZADO','ELIMINADO'],
+                    labels: ['REALIZADO', 'ELIMINADO'],
                     datasets: [
                         {
                             label: 'Total',
                             data: conteoDatos,
-                            backgroundColor: [hexToRgba(colorAprobado, 0.4), hexToRgba(colorSexoFemenino,0.4)],
-                            borderColor: [colorAprobado,colorSexoFemenino],
+                            backgroundColor: [hexToRgba(colorAprobado, 0.4), hexToRgba(colorSexoFemenino, 0.4)],
+                            borderColor: [colorAprobado, colorSexoFemenino],
                             borderWidth: 1
                         }
                     ]
@@ -288,7 +305,7 @@ export default {
             const prestaciones_para_filtrar = Object.keys(conteoPrestaciones);
             const conteoDataPrestaciones = Object.values(conteoPrestaciones);
             prestaciones.value = prestaciones_para_filtrar.map((p, index) => ({
-                id: index+1,
+                id: index + 1,
                 prestacion: p,
                 cantidad: conteoDataPrestaciones[index],
             }))
@@ -315,7 +332,7 @@ export default {
         };
 
         const totalMasculino = computed(() => conteoDatosSexo.value[0]);
-const totalFemenino = computed(() => conteoDatosSexo.value[1]);
+        const totalFemenino = computed(() => conteoDatosSexo.value[1]);
         const totalAmbos = computed(() => totalMasculino.value + totalFemenino.value);
 
         const filters = computed(() => ({
@@ -332,7 +349,7 @@ const totalFemenino = computed(() => conteoDatosSexo.value[1]);
             fetchData();
         });
 
-        onMounted(loadData);
+        onMounted(fetchData);
 
         return {
             loading,
@@ -425,7 +442,7 @@ const totalFemenino = computed(() => conteoDatosSexo.value[1]);
 .kpi_general {
     background-color: #66f19b;
     border: solid #01aa47;
-    
+
 }
 
 .kpi_male {
@@ -451,7 +468,7 @@ const totalFemenino = computed(() => conteoDatosSexo.value[1]);
 .graficos-dinamicos {
     display: flex;
     flex-direction: row;
-    
+
 
 }
 
@@ -460,15 +477,16 @@ const totalFemenino = computed(() => conteoDatosSexo.value[1]);
 .grafico-cantidad-solicitada {
     width: auto;
     margin-left: 20px;
-    
+
     flex: 1;
-    
+
     border-radius: 20px;
-    
+
     box-shadow: 10px 10px 15px rgba(0, 0, 0, 0.7);
 
 }
-.grafica-sexo{
+
+.grafica-sexo {
     margin-bottom: 20px;
     margin-left: 20px;
     width: auto;
@@ -476,10 +494,12 @@ const totalFemenino = computed(() => conteoDatosSexo.value[1]);
     border-radius: 20px;
     box-shadow: 10px 10px 15px rgba(0, 0, 0, 0.7);
 }
-.tabla-datos{
+
+.tabla-datos {
     border-radius: 30px;
     box-shadow: 10px 10px 15px rgba(0, 0, 0, 0.7);
 }
+
 .contendor-filtro-kpi {
     display: flex;
     flex-direction: row;
